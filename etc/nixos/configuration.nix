@@ -10,59 +10,62 @@
       ./hardware-configuration.nix
     ];
 
-  nixpkgs.overlays = [
-    # override google-chrome
-    (
-      self: super: 
-      {
-	      google-chrome = super.google-chrome.override (
-          prev: 
-          rec{
-		        speechd = "";
-	        }
-        );    	
-      }
-    )
-  ];
-
   # powerManagement.cpuFreqGovernor = "performance"; 
   # Often used values: “ondemand”, “powersave”, “performance”
 
   # Bootloader.
   boot.loader.grub.enable = true;
-  boot.loader.grub.device = "/dev/disk/by-id/usb-SanDisk_Cruzer_Blade_04016411121821040705-0:0";
+  boot.loader.grub.device = "/dev/disk/by-id/ata-MidasForce_SSD_120GB_AA000000000000003126"; 
   boot.loader.grub.useOSProber = true;
+  boot.loader.grub.theme = pkgs.nixos-grub2-theme;
+  boot.loader.grub.extraEntries = ''  
 
-  # gpu driver
-  #boot.kernelParams = [ "nomodeset" ];
-  services.xserver.videoDrivers = [
-    # "amdgpu"
-    # "radeon"
-    # "nouveau"
-    # "modesetting"
-    "fbdev"
-  ];
+  menuentry "Nixos livecd" --class installer {
+    set isofile="/nixos.iso"      
+    loopback loop (hd0,2)$isofile 
+    #configfile (loop)/EFI/grub/grub.cfg
+    linux (loop)/boot/bzImage findiso=/$isofile init=/nix/store/0x1xgnlgs3p73khg3m45g1n7qmh46pmz-nixos-system-nixos-23.05.3759.261abe8a44a7/init root=LABEL=nixos-23.05-x86_64 boot.shell_on_fail nohibernate loglevel=4 
+    initrd (loop)/boot/initrd
+  }
+
+  menuentry "Slax (Persistent changes) from ISO" {
+    loopback loop (hd0,2)/slax.iso
+    linux (loop)/slax/boot/vmlinuz vga=normal load_ramdisk=1 prompt_ramdisk=0 rw printk.time=0 consoleblank=0 slax.flags=perch,automount fromiso=/slax.iso
+    initrd (loop)/slax/boot/initrfs.img
+  }
+  
+  '';
+
+  #boot.plymouth.enable = true;
+  
+  # Allow unfree packages
+  nixpkgs.config.allowUnfree = true;
+
+  # nvidia driver
+  services.xserver.videoDrivers = [ "fbdev" ];
+  #nixpkgs.config.nvidia.acceptLicense = true;   
+  #hardware.nvidia.package = config.boot.kernelPackages.nvidiaPackages.legacy_390;
+  #hardware.nvidia.modesetting.enable = true;
+
+  # Enable OpenGL
+  hardware.opengl = {
+    enable = true;
+    driSupport = true;
+    driSupport32Bit = true;
+  };
+
+  # kernel
+  #boot.kernelPackages = pkgs.linuxPackages_latest;
   
   # virtual camera
   # Make some extra kernel modules available to NixOS
-  boot.extraModulePackages = with config.boot.kernelPackages;[ 
-    v4l2loopback.out 
-  ];
-  # Activate kernel modules (choose from built-ins and extra ones)
-  boot.kernelModules = [
-    "v4l2loopback"
-  ];
-  # Set initial kernel module settings
-  boot.extraModprobeConfig = ''
-    options v4l2loopback exclusive_caps=1 card_label="Virtual Camera"
-  '';
+  boot.extraModulePackages = with config.boot.kernelPackages;[ v4l2loopback.out ];  
+  boot.kernelModules = [ "v4l2loopback" ];  
+  boot.extraModprobeConfig = '' options v4l2loopback exclusive_caps=1 card_label="Virtual Camera" '';
   
-  # kernel
-  #boot.kernelPackages = pkgs.linuxPackages_latest;
-
   #zram
   zramSwap.enable = true;
-  zramSwap.memoryPercent = 400;  
+  zramSwap.memoryPercent = 300;
   # zramSwap.memoryMax = 34359738368;
   
   #filesystem
@@ -70,23 +73,36 @@
       "btrfs"
       "ntfs"
       "fat32"
-      "exfat"      
+      "exfat"
   ];
-    
-  # network proxy 
+
+  # waydroid
+   virtualisation = {
+     waydroid.enable = true;
+     #lxd.enable = true;
+     #lxc.enable = true;
+   };
+  virtualisation.lxc.defaultConfig = ''
+    lxc.net.0.type = veth
+    lxc.net.0.link = lxdbr0
+    lxc.net.0.flags = up
+  '';
+
+   
+  # Configure network proxy if necessary
   # networking.proxy.default = "http://user:password@proxy:port/";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   # Enable networking
-  networking.hostName = "nixos"; # Define your hostname.
+  networking.hostName = "NixOS"; # Define your hostname.
   networking.networkmanager.enable = true;
+  
 
   # Set your time zone.
   time.timeZone = "Asia/Jakarta";
 
   # Select internationalisation properties.
   i18n.defaultLocale = "en_US.UTF-8";
-
   i18n.extraLocaleSettings = {
     LC_ADDRESS = "id_ID.UTF-8";
     LC_IDENTIFICATION = "id_ID.UTF-8";
@@ -99,55 +115,40 @@
     LC_TIME = "id_ID.UTF-8";
   };
 
-  # Enable the X11 windowing system.
+  # Enable the X11 display server.
   services.xserver.enable = true;
 
-  # hyprland
-  # programs.hyprland.enable = true;
-
   # swaywm
-  # programs.sway.enable = false;
-  # programs.sway.extraPackages = with pkgs; [
-  #  waybar rofi slurp grim wf-recorder
-  #  fuzzel
-  # ];
+  #programs.sway.enable = false;
+  #programs.hyprland.enable = true;
+  #programs.sway.extraPackages = with pkgs; [
+   # waybar rofi slurp grim wf-recorder
+   # fuzzel foot
+  #];
 
-  # opengl
-  hardware.opengl.enable = true;
-
-  # env
+  # ENV
   environment.variables = {
     "WLR_NO_HARDWARE_CURSORS" = "1";
     "WLR_RENDERER" = "pixman";
     "WLR_RENDERER_ALLOW_SOFTWARE" = "1";
-    "NIXPKGS_ALLOW_UNFREE" = "1";
   };
-  
-  # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
 
-  # editable nix store
-  # boot.readOnlyNixStore = false;
+  # Login Manager.
+  services.xserver.displayManager.lightdm.enable = true;
   
-  # Desktop.
-    # DM
-    # services.xserver.displayManager.lightdm.enable = true;
-    services.xserver.displayManager.startx.enable = true;
-    # services.getty.greetingLine = ''''; 
-
-    # DE
-    services.xserver.desktopManager.lxqt.enable = true;
-    # services.xserver.desktopManager.budgie.enable = true;
-    # services.xserver.desktopManager.deepin.enable = true;
-    # services.xserver.desktopManager.xfce.enable = true;
-    # services.xserver.desktopManager.plasma5.enable = true;
-    # services.xserver.desktopManager.pantheon.enable = true;
-    # services.xserver.desktopManager.mate.enable = true;
-    # services.xserver.desktopManager.cinnamon.enable = true;
-    # services.xserver.desktopManager.gnome.enable = true;
-    # services.xserver.desktopManager.enlightenment.enable = true;
+  # Desktop Environtmen
+  services.xserver.desktopManager.lxqt.enable = true;
+  #services.xserver.desktopManager.budgie.enable = true;
+  #services.xserver.desktopManager.deepin.enable = true;
+  #services.xserver.desktopManager.xfce.enable = true;
+  #services.xserver.desktopManager.plasma5.enable = true;
+  #services.xserver.desktopManager.pantheon.enable = true;
+  #services.xserver.desktopManager.mate.enable = true;
+  #services.xserver.desktopManager.cinnamon.enable = true;
+  #services.xserver.desktopManager.gnome.enable = true;
+  #services.xserver.desktopManager.enlightenment.enable = true;
   
-  # exclude on plasma
+  # plasma5 exclude
   environment.plasma5.excludePackages = with pkgs; [
     libsForQt5.elisa
     libsForQt5.gwenview
@@ -157,11 +158,11 @@
     libsForQt5.ark
     orca
   ];
-  
-  # exclude on gnome
-  # services.gnome.evolution-data-server.enable = pkgs.lib.mkForce false;
-  # services.gnome.gnome-online-accounts.enable = pkgs.lib.mkForce false;
-  # programs.gnome-terminal.enable = pkgs.lib.mkForce false;
+
+  # gnome exclude
+  services.gnome.evolution-data-server.enable = pkgs.lib.mkForce false;
+  services.gnome.gnome-online-accounts.enable = pkgs.lib.mkForce false;
+  programs.gnome-terminal.enable = pkgs.lib.mkForce false;
   environment.gnome.excludePackages = with pkgs; [
     gnome.gnome-terminal
     gnome.gnome-system-monitor
@@ -178,7 +179,7 @@
     orca
     epiphany
     gnome-text-editor
-    # gnome.nautilus
+    gnome.nautilus
     gnome.gnome-contacts
     gnome.gnome-weather
     gnome.simple-scan
@@ -216,42 +217,30 @@
   users.users.ramuni = {
     isNormalUser = true;
     description = "Ramuni muni";
-    extraGroups = [ "networkmanager" "wheel" "video"];
+    extraGroups = [ "networkmanager" "wheel" ];
     packages = with pkgs; [];
   };
   
+  # editable nix store
+  #boot.readOnlyNixStore = false;
+
   # List packages installed in system profile.
   environment.systemPackages = with pkgs; [       
-    #gimp
-    #inkscape-with-extensions
+    gimp
+    inkscape-with-extensions
     chromium 
-    #libreoffice-qt
-    #krdc
-    #krfb
-    #pdfarranger
+    libreoffice-qt jre
+    krdc
+    krfb
+    pdfarranger
     gparted    
-    #simplescreenrecorder
-    #vlc
-    xorg.xhost pulseaudio wget onboard ffmpeg
+    simplescreenrecorder
+    vlc
+    xorg.xhost pulseaudio wget onboard ffmpeg_5-full
     xfce.mousepad
     lxde.lxtask htop btop neofetch    
-    gzip        
+    p7zip       
   ] ++ (
-    if (config.services.xserver.desktopManager.plasma5.enable == true)
-    then with pkgs; [
-      libsForQt5.applet-window-buttons
-      libsForQt5.kde2-decoration
-      lxqt.screengrab
-      lxqt.pavucontrol-qt
-      lxqt.qterminal
-      lxqt.pcmanfm-qt
-      lxmenu-data
-      menu-cache    
-      lxqt.lximage-qt
-      lxqt.lxqt-archiver
-      lxqt.lxqt-sudo
-      libsForQt5.breeze-icons
-    ] else
     if (config.services.xserver.desktopManager.lxqt.enable == true)
     then with pkgs; [
       libsForQt5.kwin
@@ -272,6 +261,10 @@
       libsForQt5.breeze-icons
     ]
   );
+
+  #virtualbox
+  #virtualisation.virtualbox.host.enable = true;
+  #virtualisation.virtualbox.guest.enable = true;
     
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
@@ -283,50 +276,28 @@
 
   # List services that you want to enable:
 
-  # flatpak
-  #services.flatpak.enable = false;
-
-  # waydroid
-  #virtualisation.waydroid.enable = true;
-
-  # OpenSSH 
+  # Enable the OpenSSH daemon.
   # services.openssh.enable = true;
   
   # ftp
   #services.vsftpd.enable = false;
   #services.vsftpd.writeEnable =true;
-  #services.vsftpd.localUsers = true;  
+  #services.vsftpd.localUsers = true;
   #services.vsftpd.anonymousUser = true;
   #services.vsftpd.anonymousUserHome = "/home/ftp/";
   #services.vsftpd.anonymousUserNoPassword = true;
   #services.vsftpd.anonymousUploadEnable = true;
-
-  # samba
-  #services = {
-  #  samba = {
-  #    enable = true;
-  #    shares = {
-  #      public = {
-  #        path = "/home/smb/";
-  #        comment = "Shared Directory";
-  #        read_only = false;
-  #        guest_ok = true;
-  #        browseable = true;
-  #      };
-  #    };
-  #  };
-  #};
-
-  # webserver
-  # services.httpd.enable = false;
-  # services.httpd.virtualHosts.localhost.documentRoot = "/ramuni/Public/";
   
-  # firewall.
-  # networking.firewall.allowedTCPPorts = [ 5900 21 ];
+  # Open ports in the firewall.
+  # networking.firewall.allowedTCPPorts = [ 5900 21 22 ];
   # networking.firewall.allowedUDPPorts = [ ... ];
   # Or disable the firewall altogether.
-  # networking.firewall.enable = false;  
+  # networking.firewall.enable = false;
   
+  # webserver
+  #services.httpd.enable = true;
+  #services.httpd.virtualHosts.localhost.documentRoot = "/home/ramuni/Public/";
+
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
   # on your system were taken. It‘s perfectly fine and recommended to leave
@@ -334,4 +305,5 @@
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "23.05"; # Did you read the comment?
+
 }
