@@ -752,7 +752,7 @@ in
   <applications>
     <application name="*">                             
       <maximized>true</maximized>
-      <decor>yes</decor>      
+      <decor>no</decor>      
     </application>
     
     <application title="Kalender">                             
