@@ -788,6 +788,7 @@ in
       xhost + local:0 &
       lxqt-policykit-agent &
       numlockx on &
+      
     '';
     
     home.file.".config/polybar/config.ini".text = ''
@@ -1244,8 +1245,9 @@ error-message {
     #];
 
   # hypr
-  services.xserver.windowManager.hypr.enable = true;
-  services.picom.enable = if(config.services.xserver.windowManager.hypr.enable == true)then true else false;
+  #services.xserver.windowManager.hypr.enable = true;
+  services.gvfs.enable = true;
+  services.picom.enable = true;
   services.picom.fade = true;
   #services.picom.shadow = true;
   #services.picom.fadeExclude = [ 
@@ -1255,7 +1257,7 @@ error-message {
   #  0.04
   #  0.04
   #];
-  services.gvfs.enable = if(config.services.xserver.windowManager.hypr.enable == true)then true else false;
+  
   
   # hyprland
     #programs.hyprland.enable = true;
