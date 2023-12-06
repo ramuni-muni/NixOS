@@ -266,7 +266,10 @@
     xorg.xhost pulseaudio wget onboard ffmpeg_5-full
     xfce.mousepad
     lxde.lxtask htop btop neofetch    
-    p7zip       
+    p7zip     
+    git
+    baobab
+    winbox  
   ] ++ (
     if (config.services.xserver.desktopManager.lxqt.enable == true)
     then with pkgs; [
@@ -338,26 +341,31 @@
   # List services that you want to enable:
 
   # Enable the OpenSSH daemon.
-  # services.openssh.enable = true;
+  #services.openssh.enable = true;
   
   # ftp
-  #services.vsftpd.enable = false;
+  #services.vsftpd.enable = true;
   #services.vsftpd.writeEnable =true;
   #services.vsftpd.localUsers = true;
-  #services.vsftpd.anonymousUser = true;
+  #services.vsftpd.anonymousUser = false;
   #services.vsftpd.anonymousUserHome = "/home/ftp/";
   #services.vsftpd.anonymousUserNoPassword = true;
   #services.vsftpd.anonymousUploadEnable = true;
+
+  # webserver
+  #services.httpd.enable = true;  
+  #services.httpd.user = "ramuni";
+  #services.httpd.group = "users";
+  #services.httpd.enablePerl = true;
+  #services.httpd.enablePHP = true;
+  #services.httpd.virtualHosts.localhost.documentRoot = "/home/ramuni/Public/";
+
   
   # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ 5900 21 22 ];
+  networking.firewall.allowedTCPPorts = [ 21 22 ];
   # networking.firewall.allowedUDPPorts = [ ... ];
   # Or disable the firewall altogether.
-  # networking.firewall.enable = false;
-  
-  # webserver
-  #services.httpd.enable = true;
-  #services.httpd.virtualHosts.localhost.documentRoot = "/home/ramuni/Public/";
+  # networking.firewall.enable = false;  
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.ramuni = {
